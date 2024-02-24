@@ -6,19 +6,21 @@ using static FileTranserProxy.FileTransfer;
 
 namespace FileTranserProxy.Controllers
 {
+
     [ApiController]
     [Route("[controller]")]
     public class FileTransferController : ControllerBase
     {
         private static HttpClient Client { get; } = new HttpClient();
         [HttpPost]
-        public IActionResult Post([FromBody][FromForm] string body)
+        [Route("zipArchive")]
+        public IActionResult PostZip([FromBody] string body)
         {
             var filenamesAndUrls = JsonConvert.DeserializeObject <Dictionary<string,string>>(body);
 
-            return new FileCallbackResult(new MediaTypeHeaderValue("application/octet-stream"), async (outputStream, _) =>
+            return new FileCallbackResult("application/octet-stream", async (outputStream, _) =>
             {
-                using (var zipArchive = new ZipArchive(new WriteOnlyStreamWrapper(outputStream), ZipArchiveMode.Create))
+                using (var zipArchive = new ZipArchive(outputStream, ZipArchiveMode.Create))
                 {
                     foreach (var kvp in filenamesAndUrls)
                     {
@@ -28,9 +30,26 @@ namespace FileTranserProxy.Controllers
                             await stream.CopyToAsync(zipStream);
                     }
                 }
+
             })
             {
                 FileDownloadName = "Res.zip"
+            };
+        }
+        [HttpPost]
+        [Route("source")]
+        public IActionResult Post([FromBody] string body)
+        {
+            var filenamesAndUrls = JsonConvert.DeserializeObject<Dictionary<string, string>>(body);
+            var url = filenamesAndUrls.Values.Last();
+            var name= filenamesAndUrls.Keys.Last();
+
+            return new FileCallbackResult("application/octet-stream", async (outputStream, _) =>
+            {
+                outputStream = await Client.GetStreamAsync(url);
+            })
+            {
+                FileDownloadName = name
             };
         }
     }
