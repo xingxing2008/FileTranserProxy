@@ -20,7 +20,7 @@ namespace FileTranserProxy.Controllers
 
             return new FileCallbackResult("application/octet-stream", async (outputStream, _) =>
             {
-                using (var zipArchive = new ZipArchive(outputStream, ZipArchiveMode.Create))
+                using (var zipArchive = new ZipArchive(outputStream, ZipArchiveMode.Create,true))
                 {
                     foreach (var kvp in filenamesAndUrls)
                     {
@@ -29,6 +29,7 @@ namespace FileTranserProxy.Controllers
                         using (var stream = await Client.GetStreamAsync(kvp.Value))
                             await stream.CopyToAsync(zipStream);
                     }
+
                 }
 
             })
@@ -46,7 +47,13 @@ namespace FileTranserProxy.Controllers
 
             return new FileCallbackResult("application/octet-stream", async (outputStream, _) =>
             {
-                outputStream = await Client.GetStreamAsync(url);
+                using (var httpClient = new HttpClient())
+                {
+                    using (var stream = await httpClient.GetStreamAsync(url))
+                    {
+                        await stream.CopyToAsync(outputStream);
+                    }
+                }
             })
             {
                 FileDownloadName = name
